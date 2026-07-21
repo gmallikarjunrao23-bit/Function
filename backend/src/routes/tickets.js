@@ -4,6 +4,38 @@ const { ZendeskClient } = require('../utils/zendesk');
 const { analyzeTickets } = require('../services/analysisService');
 const router = express.Router();
 
+router.post('/analyze/:workspaceId', async (req, res) => {
+  try {
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: req.params.workspaceId },
+    });
+    if (!workspace) return res.status(404).json({ error: 'Workspace not found' });
+
+    const tickets = await prisma.ticket.findMany({
+      where: { workspaceId: workspace.id },
+    });
+
+    if (!tickets.length) {
+      return res.status(400).json({ error: 'No tickets found to analyze' });
+    }
+
+    const result = await analyzeTickets(workspace.id, tickets);
+
+    res.json({
+      success: true,
+      message: 'Analyzed ' + result.ticketsAnalyzed + ' tickets, found ' + result.clustersCreated + ' clusters, generated ' + result.suggestionsGenerated + ' suggestions.',
+      ticketsAnalyzed: result.ticketsAnalyzed,
+      clustersCreated: result.clustersCreated,
+      suggestionsGenerated: result.suggestionsGenerated,
+      clusters: result.clusters,
+      suggestions: result.suggestions,
+    });
+  } catch (err) {
+    console.error('POST /tickets/analyze/:workspaceId error:', err);
+    res.status(500).json({ error: err.message || 'Analysis failed' });
+  }
+});
+
 router.post('/import/:workspaceId', async (req, res) => {
   try {
     const workspace = await prisma.workspace.findUnique({
