@@ -14,12 +14,16 @@ router.post('/import/:workspaceId', async (req, res) => {
       return res.status(400).json({ error: 'Zendesk credentials not configured' });
     }
 
-    const subdomain = workspace.zendeskUrl.replace(/^https?:\\/\\//, '').replace(/\\.zendesk\\.com.*$/, '');
+    const subdomain = workspace.zendeskUrl
+      .replace('https://', '')
+      .replace('http://', '')
+      .split('.zendesk.com')[0];
+
     const client = new ZendeskClient(subdomain, workspace.zendeskEmail, workspace.zendeskToken);
 
     const test = await client.testConnection();
     if (!test.success) {
-      return res.status(400).json({ error: `Zendesk connection failed: ${test.error}` });
+      return res.status(400).json({ error: 'Zendesk connection failed: ' + test.error });
     }
 
     const maxPages = req.body.maxPages || 5;
@@ -29,7 +33,7 @@ router.post('/import/:workspaceId', async (req, res) => {
 
     res.json({
       success: true,
-      message: `Analyzed ${result.ticketsAnalyzed} tickets, found ${result.clustersCreated} clusters, generated ${result.suggestionsGenerated} suggestions.`,
+      message: 'Analyzed ' + result.ticketsAnalyzed + ' tickets, found ' + result.clustersCreated + ' clusters, generated ' + result.suggestionsGenerated + ' suggestions.',
       ticketsAnalyzed: result.ticketsAnalyzed,
       clustersCreated: result.clustersCreated,
       suggestionsGenerated: result.suggestionsGenerated,
@@ -44,7 +48,7 @@ router.post('/import/:workspaceId', async (req, res) => {
 
 router.get('/workspace/:workspaceId', async (req, res) => {
   try {
-    const { status, clusterId, page = '1', limit = '20' } = req.query;
+    const { status, clusterId, page, limit } = req.query;
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 20));
     const skip = (pageNum - 1) * limitNum;
