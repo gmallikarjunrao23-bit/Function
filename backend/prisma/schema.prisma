@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Workspace {
+  id            String   @id @default(uuid())
+  name          String
+  zendeskUrl    String?
+  zendeskEmail  String?
+  zendeskToken  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  tickets       Ticket[]
+  clusters      Cluster[]
+  suggestions   Suggestion[]
+  digests       Digest[]
+  @@index([createdAt])
+}
+
+model Ticket {
+  id          String   @id @default(uuid())
+  workspaceId String
+  externalId  String   @unique
+  subject     String
+  body        String   @db.Text
+  status      String   @default("open")
+  priority    String   @default("normal")
+  tags        String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  clusterId   String?
+  cluster     Cluster?  @relation(fields: [clusterId], references: [id])
+  @@index([workspaceId])
+  @@index([clusterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Cluster {
+  id          String   @id @default(uuid())
+  workspaceId String
+  name        String
+  description String   @db.Text
+  keywords    String[]
+  ticketCount Int      @default(0)
+  impactScore Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
+  suggestions Suggestion[]
+  @@index([workspaceId])
+  @@index([impactScore])
+}
+
+model Suggestion {
+  id          String   @id @default(uuid())
+  workspaceId String
+  clusterId   String
+  title       String
+  description String   @db.Text
+  content     String   @db.Text
+  priority    String   @default("medium")
+  status      String   @default("pending")
+  impact      Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  cluster     Cluster   @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+  @@index([workspaceId])
+  @@index([clusterId])
+  @@index([status])
+  @@index([priority])
+}
+
+model Digest {
+  id              String   @id @default(uuid())
+  workspaceId     String
+  period          String
+  summary         String   @db.Text
+  topClusters     Json
+  newSuggestions  Int      @default(0)
+  ticketsAnalyzed Int      @default(0)
+  sentAt          DateTime @default(now())
+  workspace       Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  @@index([workspaceId])
+  @@index([sentAt])
+}
