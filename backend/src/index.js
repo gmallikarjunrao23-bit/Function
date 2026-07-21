@@ -50,10 +50,10 @@ app.use((err, req, res, next) => {
 
 async function start() {
   try {
-    // Run migrations automatically on startup
-    console.log('Running database migrations...');
-    execSync('npx prisma migrate deploy', { stdio: 'inherit', cwd: '/app' });
-    console.log('Migrations completed');
+    // Push schema directly to DB (no migration files needed)
+    console.log('Pushing database schema...');
+    execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit', cwd: '/app' });
+    console.log('Schema pushed');
     
     // Seed if no workspaces exist
     const { prisma } = require('./utils/db');
