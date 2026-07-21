@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const { execSync } = require('child_process');
 const { connectDB, disconnectDB } = require('./utils/db');
 
 const workspaceRoutes = require('./routes/workspace');
@@ -48,6 +49,24 @@ app.use((err, req, res, next) => {
 });
 
 async function start() {
+  try {
+    // Run migrations automatically on startup
+    console.log('Running database migrations...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit', cwd: '/app' });
+    console.log('Migrations completed');
+    
+    // Seed if no workspaces exist
+    const { prisma } = require('./utils/db');
+    const workspaceCount = await prisma.workspace.count();
+    if (workspaceCount === 0) {
+      console.log('Seeding database...');
+      execSync('node prisma/seed.js', { stdio: 'inherit', cwd: '/app' });
+      console.log('Seed completed');
+    }
+  } catch (err) {
+    console.error('Migration/Seed error:', err.message);
+  }
+
   await connectDB();
   app.listen(PORT, () => {
     console.log('TicketAI backend running on port ' + PORT);
